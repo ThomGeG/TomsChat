@@ -1,0 +1,98 @@
+<html>
+
+  <head>
+    <title>TomChat</title>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+    <link rel="shortcut icon" type="image/png" href="static/images/favicon.png">
+
+  </head>
+
+  <body>
+
+    <div class="container">
+
+      <div class="container-fluid pre-scrollable" id="chat_container" style="padding : 0px;">
+        <table class="table table-striped" id="chat_table" style="margin-bottom : 0px;">
+        % for message in messages:
+          <tr>
+            <td><b>{{message["poster"]}}: </b>{{message["message_body"]}}</td>
+          </tr>
+        % end
+        </table>
+      </div>
+
+      <div class="container-fluid well well-sm form-inline">
+
+        <div class="input-group" style="min-width: 100%">
+          <textarea class="form-control custom-control" rows="5" style="resize: none;" id="message_body" placeholder="Type your message here."></textarea>
+          <span class="input-group-addon btn btn-success" id="send_message">Send</span>
+        </div>
+
+      </div>
+
+      <script>
+
+        //Establish a websocket connection with the server for live updates.
+        var ws = new WebSocket("ws://" + document.domain + ":8080/join_chat");
+
+        //Assign a callback function to handle transmissions from the server.
+        ws.onmessage = function(evt) {
+          console.log("Message recieved: " + evt.data)
+
+          var payload = JSON.parse(evt.data) //Parse servers response into JSON.
+
+          //Update the HTML to feature the new message...
+          var table = document.getElementById("chat_table");
+          var row   = table.insertRow(-1);
+          var cell  = row.insertCell(0);
+
+          cell.innerHTML = "<b>" + payload["poster"] + ": </b>" + payload["message_body"];
+
+          $('#chat_container').scrollTop($('#chat_container').prop("scrollHeight")); //Scroll to the bottom of the chat history on message sent.
+        };
+
+        //Error handling. (Just print to console)
+        ws.onerror = function(error) {
+          console.log('WebSocket Error: ' + error);
+        };
+
+        // Show a disconnected message when the WebSocket is closed.
+        ws.onclose = function(event) {
+          alert("Connected closed. Either the server is down or you closed your connection somehow.")
+        };
+
+        //Function to transmit a message
+        function submit_message() {
+          ws.send($("#message_body").val());
+          console.log("Sent message: " + $("#message_body").val());
+          $("#message_body").val("");
+        };
+
+        //Redefine 'enter' keys behaviour in the textarea to submit the form rather than write a newline.
+        //Shift + enter now performs that role as like many other chat apps.
+        $("#message_body").keypress(function(e) {
+            if(e.which == 13 && !e.shiftKey) { //keypressed == 'enter' && shift is not held down.
+                submit_message()
+                e.preventDefault();
+            }
+        });
+
+        //Add an event listener to the "Send" button in the form.
+      	$("#send_message").click(function() {submit_message();});
+
+        $(document).ready(function() { //On page load...
+          $("#message_body").select();  //Select the chat box
+          $('#chat_container').scrollTop($('#chat_container').prop("scrollHeight")); //Scroll to the bottom of the chat history
+        });
+
+      </script>
+
+    </div>
+
+  </body>
+
+</html>
